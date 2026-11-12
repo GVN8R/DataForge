@@ -73,3 +73,18 @@ def find_invalid_numbers(records, columns):
                 })
     
     return issues
+
+
+def validate_with_rules(records, rules):
+    results = {}
+
+    results["missing_values"] = find_missing_values(records)
+
+    results["duplicates"] = find_duplicates(records)
+
+    results["invalid_numbers"] = find_invalid_numbers(
+        records,
+        rules.get("numeric_columns", [])
+    )
+
+    return results

@@ -3,7 +3,8 @@ from src.dataforge.validation import (
     find_duplicates,
     validate_records,
     generate_quality_report,
-    find_invalid_numbers
+    find_invalid_numbers,
+    validate_with_rules
 )
 
 
@@ -115,3 +116,34 @@ def test_find_invalid_numbers_multiple_columns():
     )
 
     assert len(issues) == 2
+
+
+def test_validate_with_rules():
+    records = [
+        {"date": "2026-01-01", "temperature": "42.5"},
+        {"date": "2026-01-02", "temperature": "unknown"},
+        {"date": "2026-01-03", "temperature": "38.2"}
+    ]
+
+    rules = {
+        "required_columns": ["date", "temperature"],
+        "numeric_columns": ["temperature"],
+        "unique_columns": ["date"]
+    }
+
+    results = validate_with_rules(records, rules)
+
+    assert len(results["missing_values"]) == 0
+    assert len(results["duplicates"]) == 0
+    assert len(results["invalid_numbers"]) == 1
+
+
+def test_validate_with_empty_rules():
+    records = [
+        {"name": "Alice"},
+        {"name": "Bob"}
+    ]
+
+    results = validate_with_rules(records, {})
+
+    assert results["invalid_numbers"] == []
