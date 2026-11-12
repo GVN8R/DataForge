@@ -11,7 +11,23 @@ def read_csv(file_path):
     with path.open("r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
-        if reader.fieldnames is None:
+        if not reader.fieldnames:
             raise ValueError("CSV file is empty or missing headers.")
         
-        return list(reader)
+        headers = [header.strip() for header in reader.fieldnames]
+
+        if any(not header for header in headers):
+            raise ValueError("CSV contains an empty column name.")
+        
+        if len(headers) != len(set(headers)):
+            raise ValueError("CSV contains duplicate column names.")
+        
+        records = []
+
+        for row in reader:
+            if None in row:
+                raise ValueError("CSV row contains more values than headers.")
+            
+            records.append(row)
+
+        return records
