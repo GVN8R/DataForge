@@ -1,6 +1,11 @@
+from src.dataforge.ingestion import read_csv
+
+
 def main():
-    print("Welcome to DataForge!")
-    print("Public Data Intelligence Platform")
+    records = read_csv("data/raw/sample.csv")
+
+    for record in records:
+        print(record)
 
 
 if __name__ == "__main__":
