@@ -50,3 +50,26 @@ def generate_quality_report(records):
         "total_issues": missing_count + duplicate_count,
         "passed": missing_count == 0 and duplicate_count == 0
     }
+
+
+def find_invalid_numbers(records, columns):
+    issues = []
+
+    for row_number, record in enumerate(records, start=1):
+        for column in columns:
+            value = record.get(column)
+
+            if value is None or value.strip() == "":
+                continue
+            
+            try:
+                float(value)
+            except ValueError:
+                issues.append({
+                    "row": row_number,
+                    "column": column,
+                    "value": value,
+                    "issue": "Invalid numeric value"
+                })
+    
+    return issues

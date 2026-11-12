@@ -2,7 +2,8 @@ from src.dataforge.validation import (
     find_missing_values,
     find_duplicates,
     validate_records,
-    generate_quality_report
+    generate_quality_report,
+    find_invalid_numbers
 )
 
 
@@ -73,3 +74,44 @@ def test_quality_report_without_issues():
     assert report["total_records"] == 2
     assert report["total_issues"] == 0
     assert report["passed"] is True
+
+
+def test_find_invalid_numbers():
+    records = [
+        {"temperature": "42.5"},
+        {"temperature": "unknown"},
+        {"temperature": "38.2"},
+        {"temperature": "abc"}
+    ]
+
+    issues = find_invalid_numbers(records, ["temperature"])
+
+    assert len(issues) == 2
+    assert issues[0]["row"] == 2
+    assert issues[0]["value"] == "unknown"
+    assert issues[1]["value"] == "abc"
+
+
+def test_find_invalid_numbers_ignores_missing_values():
+    records = [
+        {"temperature": ""},
+        {"temperature": "42.5"}
+    ]
+
+    issues = find_invalid_numbers(records, ["temperature"])
+
+    assert issues == []
+
+
+def test_find_invalid_numbers_multiple_columns():
+    records = [
+        {"temperature": "unknown", "precipitation": "rain"},
+        {"temperature": "42.5", "precipitation": "0.2"}
+    ]
+
+    issues = find_invalid_numbers(
+        records,
+        ["temperature", "precipitation"]
+    )
+
+    assert len(issues) == 2
