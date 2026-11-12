@@ -36,3 +36,17 @@ def validate_records(records):
         "missing_values": find_missing_values(records),
         "duplicates": find_duplicates(records)
     }
+
+def generate_quality_report(records):
+    results = validate_records(records)
+
+    missing_count = len(results["missing_values"])
+    duplicate_count = len(results["duplicates"])
+
+    return {
+        "total_records": len(records),
+        "missing_values": missing_count,
+        "duplicate_records": duplicate_count,
+        "total_issues": missing_count + duplicate_count,
+        "passed": missing_count == 0 and duplicate_count == 0
+    }
