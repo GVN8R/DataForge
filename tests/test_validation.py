@@ -6,7 +6,8 @@ from src.dataforge.validation import (
     find_invalid_numbers,
     validate_with_rules,
     find_missing_columns,
-    find_duplicate_values
+    find_duplicate_values,
+    generate_full_quality_report
 )
 
 
@@ -247,3 +248,42 @@ def test_validate_with_rules_detects_duplicate_values():
     results = validate_with_rules(records, rules)
 
     assert len(results["duplicate_values"]) == 1
+
+
+def test_full_quality_report():
+    records = [
+        {"date": "2026-01-01", "temperature": "42"},
+        {"date": "2026-01-01", "temperature": "unknown"},
+        {"date": "2026-01-03", "temperature": ""}
+    ]
+
+    rules = {
+        "required_columns": ["date", "temperature"],
+        "numeric_columns": ["temperature"],
+        "unique_columns": ["date"]
+    }
+
+    report = generate_full_quality_report(records, rules)
+
+    assert report["total_records"] == 3
+    assert report["total_issues"] == 3
+    assert report["passed"] is False
+
+
+def test_full_quality_report_clean_dataset():
+    records = [
+        {"date": "2026-01-01", "temperature": "42"},
+        {"date": "2026-01-02", "temperature": "38"}
+    ]
+
+    rules = {
+        "required_columns": ["date", "temperature"],
+        "numeric_columns": ["temperature"],
+        "unique_columns": ["date"]
+    }
+
+    report = generate_full_quality_report(records, rules)
+
+    assert report["total_records"] == 2
+    assert report["total_issues"] == 0
+    assert report["passed"] is True

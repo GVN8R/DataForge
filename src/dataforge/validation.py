@@ -147,3 +147,23 @@ def find_duplicate_values(records, columns):
                 seen.add(value)
     
     return issues
+
+
+def generate_full_quality_report(records, rules):
+    results = validate_with_rules(records, rules)
+
+    issue_counts = {
+        category: len(issues)
+        for category, issues in results.items()
+    }
+
+    total_issues = sum(issue_counts.values())
+
+    total_records = len(records)
+
+    return {
+        "total_records": total_records,
+        "issue_counts": issue_counts,
+        "total_issues": total_issues,
+        "passed": total_issues == 0
+    }
