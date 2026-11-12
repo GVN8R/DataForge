@@ -92,6 +92,11 @@ def validate_with_rules(records, rules):
         rules.get("numeric_columns", [])
     )
 
+    results["duplicate_values"] = find_duplicate_values(
+        records,
+        rules.get("unique_columns", [])
+    )
+
     return results
 
 
@@ -115,5 +120,30 @@ def find_missing_columns(records, required_columns):
                 "column": column,
                 "issue": "Required column missing"
             })
+    
+    return issues
+
+
+def find_duplicate_values(records, columns):
+    issues = []
+
+    for column in columns:
+        seen = set()
+
+        for row_number, record in enumerate(records, start=1):
+            value = record.get(column)
+
+            if value is None or value.strip() == "":
+                continue
+            
+            if value in seen:
+                issues.append({
+                    "row": row_number,
+                    "column": column,
+                    "value": value,
+                    "issue": "Duplicate column value"
+                })
+            else:
+                seen.add(value)
     
     return issues

@@ -5,7 +5,8 @@ from src.dataforge.validation import (
     generate_quality_report,
     find_invalid_numbers,
     validate_with_rules,
-    find_missing_columns
+    find_missing_columns,
+    find_duplicate_values
 )
 
 
@@ -200,3 +201,49 @@ def test_validate_with_rules_detects_missing_columns():
 
     assert len(results["missing_columns"]) == 1
     assert results["missing_columns"][0]["column"] == "temperature"
+
+
+def test_find_duplicate_values():
+    records = [
+        {"date": "2026-01-01", "temperature": "42"},
+        {"date": "2026-01-02", "temperature": "38"},
+        {"date": "2026-01-01", "temperature": "45"}
+    ]
+
+    issues = find_duplicate_values(records, ["date"])
+
+    assert len(issues) == 1
+    assert issues[0]["row"] == 3
+    assert issues[0]["column"] == "date"
+
+
+def test_find_duplicate_values_multiple_columns():
+    records = [
+        {"date": "2026-01-01", "station": "A"},
+        {"date": "2026-01-02", "station": "A"},
+        {"date": "2026-01-01", "station": "B"}
+    ]
+
+    issues = find_duplicate_values(
+        records,
+        ["date", "station"]
+    )
+
+    assert len(issues) == 2
+
+
+def test_validate_with_rules_detects_duplicate_values():
+    records = [
+        {"date": "2026-01-01", "temperature": "42"},
+        {"date": "2026-01-01", "temperature": "45"}
+    ]
+
+    rules = {
+        "required_columns": ["date", "temperature"],
+        "numeric_columns": ["temperature"],
+        "unique_columns": ["date"]
+    }
+
+    results = validate_with_rules(records, rules)
+
+    assert len(results["duplicate_values"]) == 1
