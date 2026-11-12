@@ -78,6 +78,11 @@ def find_invalid_numbers(records, columns):
 def validate_with_rules(records, rules):
     results = {}
 
+    results["missing_columns"] = find_missing_columns(
+        records,
+        rules.get("required_columns", [])
+    )
+
     results["missing_values"] = find_missing_values(records)
 
     results["duplicates"] = find_duplicates(records)
@@ -88,3 +93,27 @@ def validate_with_rules(records, rules):
     )
 
     return results
+
+
+def find_missing_columns(records, required_columns):
+    if not records:
+        return [
+            {
+                "column": column,
+                "issue": "Required column missing"
+            }
+            for column in required_columns
+        ]
+    
+    available_columns = set(records[0].keys())
+
+    issues = []
+
+    for column in required_columns:
+        if column not in available_columns:
+            issues.append({
+                "column": column,
+                "issue": "Required column missing"
+            })
+    
+    return issues

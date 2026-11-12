@@ -4,7 +4,8 @@ from src.dataforge.validation import (
     validate_records,
     generate_quality_report,
     find_invalid_numbers,
-    validate_with_rules
+    validate_with_rules,
+    find_missing_columns
 )
 
 
@@ -147,3 +148,55 @@ def test_validate_with_empty_rules():
     results = validate_with_rules(records, {})
 
     assert results["invalid_numbers"] == []
+
+
+def test_find_missing_columns():
+    records = [
+        {"date": "2026-01-01", "temperature": "42.5"}
+    ]
+
+    issues = find_missing_columns(
+        records,
+        ["date", "temperature", "precipitation"]
+    )
+
+    assert len(issues) == 1
+    assert issues[0]["column"] == "precipitation"
+
+
+def test_find_missing_columns_empty_dataset():
+    issues = find_missing_columns(
+        [],
+        ["date", "temperature"]
+    )
+
+    assert len(issues) == 2
+
+
+def test_find_missing_columns_all_present():
+    records = [
+        {"date": "2026-01-01", "temperature": "42.5"}
+    ]
+
+    issues = find_missing_columns(
+        records,
+        ["date", "temperature"]
+    )
+
+    assert issues == []
+
+
+def test_validate_with_rules_detects_missing_columns():
+    records = [
+        {"date": "2026-01-01"}
+    ]
+
+    rules = {
+        "required_columns": ["date", "temperature"],
+        "numeric_columns": ["temperature"]
+    }
+
+    results = validate_with_rules(records, rules)
+
+    assert len(results["missing_columns"]) == 1
+    assert results["missing_columns"][0]["column"] == "temperature"
