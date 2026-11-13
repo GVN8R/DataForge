@@ -1,7 +1,8 @@
 import pytest
 from src.dataforge.transformation import (
     normalize_column_names,
-    normalize_text_values
+    normalize_text_values,
+    normalize_missing_values
 )
 
 
@@ -56,3 +57,51 @@ def test_normalize_column_collision():
 
     with pytest.raises(ValueError, match="collision"):
         normalize_column_names(records)
+
+
+def test_normalize_missing_values():
+    records = [
+        {"temperature": "42.5"},
+        {"temperature": ""},
+        {"temperature": "N/A"},
+        {"temperature": "unknown"},
+        {"temperature": "null"}
+    ]
+
+    result = normalize_missing_values(records)
+
+    assert result == [
+        {"temperature": "42.5"},
+        {"temperature": None},
+        {"temperature": None},
+        {"temperature": None},
+        {"temperature": None}
+    ]
+
+
+def test_custom_missing_markers():
+    records = [
+        {"status": "not recorded"},
+        {"status": "42"}
+    ]
+
+    result = normalize_missing_values(
+        records,
+        {"not recorded"}
+    )
+
+    assert result == [
+        {"status": None},
+        {"status": "42"}
+    ]
+
+
+def test_missing_value_normalization_preserves_non_strings():
+    records = [
+        {"temperature": 42.5},
+        {"temperature": None}
+    ]
+
+    result = normalize_missing_values(records)
+
+    assert result == records
