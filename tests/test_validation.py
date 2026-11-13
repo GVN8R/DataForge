@@ -331,3 +331,53 @@ def test_format_clean_quality_report():
 
     assert "Total issues: 0" in output
     assert "Status: PASSED" in output
+
+
+def test_missing_values_detects_whitespace():
+    records = [
+        {"name": "Alice"},
+        {"name": "   "}
+    ]
+
+    issues = find_missing_values(records)
+
+    assert len(issues) == 1
+    assert issues[0]["row"] == 2
+
+
+def test_duplicate_values_ignores_whitespace():
+    records = [
+        {"date": "2026-01-01"},
+        {"date": "   "},
+        {"date": "2026-01-02"}
+    ]
+
+    issues = find_duplicate_values(records, ["date"])
+
+    assert issues == []
+
+
+def test_invalid_numbers_detects_whitespace():
+    records = [
+        {"temperature": "   "},
+        {"temperature": "42.5"}
+    ]
+
+    issues = find_invalid_numbers(records, ["temperature"])
+
+    assert issues == []
+
+
+def test_quality_report_empty_dataset():
+    report = generate_full_quality_report(
+        [],
+        {
+            "required_columns": ["date"],
+            "numeric_columns": ["temperature"],
+            "unique_columns": ["date"]
+        }
+    )
+
+    assert report["total_records"] == 0
+    assert report["total_issues"] == 1
+    assert report["passed"] is False
