@@ -68,3 +68,28 @@ def normalize_missing_values(records, missing_markers=None):
         normalized_records.append(normalized_record)
 
     return normalized_records
+
+
+def convert_numeric_columns(records, columns):
+    converted_records = []
+
+    for record in records:
+        converted_record = record.copy()
+
+        for column in columns:
+            value = converted_record.get(column)
+
+            if value is None:
+                continue
+
+            try:
+                converted_record[column] = float(value)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Invalid numeric value in column "
+                    f"'{column}': {value}"
+                )
+
+        converted_records.append(converted_record)
+
+    return converted_records
