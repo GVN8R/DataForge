@@ -4,7 +4,8 @@ from src.dataforge.transformation import (
     normalize_text_values,
     normalize_missing_values,
     convert_numeric_columns,
-    normalize_date_columns
+    normalize_date_columns,
+    transform_records
 )
 
 
@@ -220,3 +221,59 @@ def test_normalize_dates_does_not_modify_original():
     )
 
     assert records[0]["date"] == "01/15/2026"
+
+
+def test_transform_records_complete_pipeline():
+    records = [
+        {
+            " DATE ": "2026-01-01",
+            " TEMPERATURE ": "42.5",
+            " CITY ": " Springfield "
+        },
+        {
+            " DATE ": "2026-01-02",
+            " TEMPERATURE ": "N/A",
+            " CITY ": " Rolla "
+        }
+    ]
+
+    rules = {
+        "missing_markers": {"", "n/a", "unknown"},
+        "numeric_columns": ["temperature"],
+        "date_columns": ["date"],
+        "date_format": "%Y-%m-%d"
+    }
+
+    result = transform_records(records, rules)
+
+    assert result == [
+        {
+            "date": "2026-01-01",
+            "temperature": 42.5,
+            "city": "Springfield"
+        },
+        {
+            "date": "2026-01-02",
+            "temperature": None,
+            "city": "Rolla"
+        }
+    ]
+
+
+def test_transform_records_empty_dataset():
+    result = transform_records([], {})
+
+    assert result == []
+
+
+def test_transform_records_does_not_modify_original():
+    records = [
+        {" TEMPERATURE ": "42.5"}
+    ]
+
+    transform_records(
+        records,
+        {"numeric_columns": ["temperature"]}
+    )
+
+    assert records[0][" TEMPERATURE "] == "42.5"

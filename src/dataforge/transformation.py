@@ -128,3 +128,27 @@ def normalize_date_columns(records, columns, date_format=None):
         normalized_records.append(normalized_record)
 
     return normalized_records
+
+
+def transform_records(records, rules):
+    transformed = normalize_column_names(records)
+
+    transformed = normalize_text_values(transformed)
+
+    transformed = normalize_missing_values(
+        transformed,
+        rules.get("missing_markers")
+    )
+
+    transformed = convert_numeric_columns(
+        transformed,
+        rules.get("numeric_columns", [])
+    )
+
+    transformed = normalize_date_columns(
+        transformed,
+        rules.get("date_columns", []),
+        rules.get("date_format")
+    )
+
+    return transformed
