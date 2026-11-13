@@ -5,7 +5,8 @@ from src.dataforge.transformation import (
     normalize_missing_values,
     convert_numeric_columns,
     normalize_date_columns,
-    transform_records
+    transform_records,
+    process_records
 )
 
 
@@ -277,3 +278,78 @@ def test_transform_records_does_not_modify_original():
     )
 
     assert records[0][" TEMPERATURE "] == "42.5"
+
+
+def test_process_records_returns_report_and_transformed_data():
+    records = [
+        {"Date": "2026-01-01", "Temperature": "72"},
+        {"Date": "2026-01-02", "Temperature": "75"}
+    ]
+
+    validation_rules = {
+        "required_columns": ["Date", "Temperature"],
+        "numeric_columns": ["Temperature"],
+        "unique_columns": ["Date"]
+    }
+
+    transformation_rules = {
+        "numeric_columns": ["temperature"],
+        "date_columns": ["date"]
+    }
+
+    result = process_records(
+        records,
+        validation_rules,
+        transformation_rules
+    )
+
+    assert result["validation_report"]["passed"] is True
+    assert result["transformed_records"][0]["temperature"] == 72.0
+    assert result["transformed_records"][0]["date"] == "2026-01-01"
+
+
+def test_process_records_rejects_missing_required_columns():
+    records = [
+        {"Date": "2026-01-01"}
+    ]
+
+    validation_rules = {
+        "required_columns": ["Date", "Temperature"],
+        "numeric_columns": [],
+        "unique_columns": []
+    }
+
+    transformation_rules = {}
+
+    try:
+        process_records(
+            records,
+            validation_rules,
+            transformation_rules
+        )
+        assert False, "Expected ValueError"
+    except ValueError as error:
+        assert "required columns are missing" in str(error)
+
+
+def test_process_records_does_not_modify_original_records():
+    records = [
+        {"Date": "2026-01-01", "Temperature": "72"}
+    ]
+
+    original = [record.copy() for record in records]
+
+    process_records(
+        records,
+        {
+            "required_columns": ["Date", "Temperature"],
+            "numeric_columns": ["Temperature"],
+            "unique_columns": []
+        },
+        {
+            "numeric_columns": ["temperature"],
+            "date_columns": ["date"]
+        }
+    )
+
+    assert records == original

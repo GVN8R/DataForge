@@ -1,3 +1,4 @@
+from src.dataforge.validation import generate_full_quality_report
 from datetime import datetime
 
 def normalize_column_names(records):
@@ -152,3 +153,32 @@ def transform_records(records, rules):
     )
 
     return transformed
+
+
+def process_records(records, validation_rules, transformation_rules):
+    validation_report = generate_full_quality_report(
+        records,
+        validation_rules
+    )
+
+    blocking_issues = (
+        validation_report["issue_counts"]["missing columns"]
+        if "missing columns" in validation_report["issue_counts"]
+        else validation_report["issue_counts"]["missing_columns"]
+    )
+
+    if blocking_issues:
+        raise ValueError(
+            "Cannot process records: required columns are missing."
+        )
+
+
+    transformed_records = transform_records(
+        records,
+        transformation_rules
+    )
+
+    return {
+        "validation_report": validation_report,
+        "transformed_records": transformed_records
+    }
