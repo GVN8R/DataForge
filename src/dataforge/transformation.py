@@ -1,3 +1,5 @@
+from datetime import datetime
+
 def normalize_column_names(records):
     if not records:
         return []
@@ -93,3 +95,36 @@ def convert_numeric_columns(records, columns):
         converted_records.append(converted_record)
 
     return converted_records
+
+
+def normalize_date_columns(records, columns, date_format=None):
+    normalized_records = []
+
+    for record in records:
+        normalized_record = record.copy()
+
+        for column in columns:
+            value = normalized_record.get(column)
+
+            if value is None:
+                continue
+
+            try:
+                if date_format:
+                    parsed_date = datetime.strptime(
+                        value,
+                        date_format
+                    )
+                else:
+                    parsed_date = datetime.fromisoformat(value)
+
+                normalized_record[column] = parsed_date.date().isoformat()
+
+            except(ValueError, TypeError):
+                raise ValueError(
+                    f"Invalid date in column '{column}': {value}"
+                )
+
+        normalized_records.append(normalized_record)
+
+    return normalized_records

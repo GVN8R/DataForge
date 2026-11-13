@@ -3,7 +3,8 @@ from src.dataforge.transformation import (
     normalize_column_names,
     normalize_text_values,
     normalize_missing_values,
-    convert_numeric_columns
+    convert_numeric_columns,
+    normalize_date_columns
 )
 
 
@@ -157,3 +158,65 @@ def test_convert_numeric_columns_does_not_modify_original():
     convert_numeric_columns(records, ["temperature"])
 
     assert records[0]["temperature"] == "42.5"
+
+
+def test_normalize_iso_dates():
+    records = [
+        {"date": "2026-01-15"},
+        {"date": "2026-02-20"}
+    ]
+
+    result = normalize_date_columns(records, ["date"])
+
+    assert result[0]["date"] == "2026-01-15"
+    assert result[1]["date"] == "2026-02-20"
+
+
+def test_normalize_custom_date_format():
+    records = [
+        {"date": "01/15/2026"},
+        {"date": "02/20/2026"}
+    ]
+
+    result = normalize_date_columns(
+        records,
+        ["date"],
+        date_format="%m/%d/%Y"
+    )
+
+    assert result[0]["date"] == "2026-01-15"
+    assert result[1]["date"] == "2026-02-20"
+
+
+def test_normalize_dates_preserves_missing_values():
+    records = [
+        {"date": None},
+        {"date": "2026-01-15"}
+    ]
+
+    result = normalize_date_columns(records, ["date"])
+
+    assert result[0]["date"] is None
+
+
+def test_normalize_dates_invalid_value():
+    records = [
+        {"date": "not-a-date"}
+    ]
+
+    with pytest.raises(ValueError, match="Invalid date"):
+        normalize_date_columns(records, ["date"])
+
+
+def test_normalize_dates_does_not_modify_original():
+    records = [
+        {"date": "01/15/2026"}
+    ]
+
+    normalize_date_columns(
+        records,
+        ["date"],
+        date_format="%m/%d/%Y"
+    )
+
+    assert records[0]["date"] == "01/15/2026"
