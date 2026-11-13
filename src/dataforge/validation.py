@@ -167,3 +167,26 @@ def generate_full_quality_report(records, rules):
         "total_issues": total_issues,
         "passed": total_issues == 0
     }
+
+
+def format_quality_report(report):
+    lines = [
+        "DATAFORGE QUALITY REPORT",
+        "=" * 30,
+        f"Total records: {report["total_records"]}",
+        "",
+        "ISSUES BY CATEGORY",
+        "-" * 30
+    ]
+
+    for category, count in report["issue_counts"].items():
+        readable_name = category.replace("_", " ").title()
+        lines.append(f"{readable_name}: {count}")
+    
+    lines.extend([
+        "",
+        f"Total issues: {report["total_issues"]}",
+        f"Status: {"PASSED" if report["passed"] else "ISSUES FOUND"}"
+    ])
+
+    return "\n".join(lines)

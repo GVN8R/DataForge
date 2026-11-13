@@ -7,7 +7,8 @@ from src.dataforge.validation import (
     validate_with_rules,
     find_missing_columns,
     find_duplicate_values,
-    generate_full_quality_report
+    generate_full_quality_report,
+    format_quality_report
 )
 
 
@@ -287,3 +288,46 @@ def test_full_quality_report_clean_dataset():
     assert report["total_records"] == 2
     assert report["total_issues"] == 0
     assert report["passed"] is True
+
+
+def test_format_quality_report():
+    report = {
+        "total_records": 100,
+        "issue_counts": {
+            "missing_columns": 0,
+            "missing_values": 3,
+            "duplicates": 2,
+            "invalid_numbers": 1,
+            "duplicate_values": 0
+        },
+        "total_issues": 6,
+        "passed": False
+    }
+
+    output = format_quality_report(report)
+
+    assert "DATAFORGE QUALITY REPORT" in output
+    assert "Total records: 100" in output
+    assert "Missing Values: 3" in output
+    assert "Total issues: 6" in output
+    assert "Status: ISSUES FOUND" in output
+
+
+def test_format_clean_quality_report():
+    report = {
+        "total_records": 50,
+        "issue_counts": {
+            "missing_columns": 0,
+            "missing_values": 0,
+            "duplicates": 0,
+            "invalid_numbers": 0,
+            "duplicate_values": 0
+        },
+        "total_issues": 0,
+        "passed": True
+    }
+
+    output = format_quality_report(report)
+
+    assert "Total issues: 0" in output
+    assert "Status: PASSED" in output
