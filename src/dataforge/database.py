@@ -105,3 +105,56 @@ def get_dataset_records(db_path, dataset_id):
 
     finally:
         connection.close()
+
+
+def list_datasets(db_path):
+    connection = connect_database(db_path)
+
+    try:
+        rows = connection.execute(
+            """
+            SELECT id, source_file, imported_at, record_count
+            FROM datasets
+            ORDER BY id DESC
+            """
+        ).fetchall()
+
+        return [
+            {
+                "id": row[0],
+                "source_file": row[1],
+                "imported_at": row[2],
+                "record_count": row[3]
+            }
+            for row in rows
+        ]
+
+    finally:
+        connection.close()
+
+
+def get_dataset(db_path, dataset_id):
+    connection = connect_database(db_path)
+
+    try:
+        row = connection.execute(
+            """
+            SELECT id, source_file, imported_at, record_count
+            FROM datasets
+            WHERE id = ?
+            """,
+            (dataset_id,)
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "id": row[0],
+            "source_file": row[1],
+            "imported_at": row[2],
+            "record_count": row[3]
+        }
+
+    finally:
+        connection.close()

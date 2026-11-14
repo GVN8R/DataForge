@@ -2,7 +2,9 @@ from src.dataforge.database import (
     connect_database,
     initialize_database,
     save_dataset,
-    get_dataset_records
+    get_dataset_records,
+    list_datasets,
+    get_dataset
 )
 import sqlite3
 import pytest
@@ -158,3 +160,58 @@ def test_save_empty_dataset(tmp_path):
     )
 
     assert get_dataset_records(db_path, dataset_id) == []
+
+
+def test_list_datasets_returns_all_datasets(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    first_id = save_dataset(
+        db_path,
+        "weather.csv",
+        [{"city": "Rolla"}]
+    )
+
+    second_id = save_dataset(
+        db_path,
+        "population.csv",
+        [{"city": "Columbia"}, {"city": "Rolla"}]
+    )
+
+    datasets = list_datasets(db_path)
+
+    assert len(datasets) == 2
+    assert datasets[0]["id"] == second_id
+    assert datasets[1]["id"] == first_id
+
+
+def test_list_datasets_returns_empty_list(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    initialize_database(db_path)
+
+    assert list_datasets(db_path) == []
+
+
+def test_get_dataset_returns_correct_metadata(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    dataset_id = save_dataset(
+        db_path,
+        "weather.csv",
+        [{"city": "Rolla"}]
+    )
+
+    dataset = get_dataset(db_path, dataset_id)
+
+    assert dataset["id"] == dataset_id
+    assert dataset["source_file"] == "weather.csv"
+    assert dataset["record_count"] == 1
+    assert dataset["imported_at"] is not None
+
+
+def test_get_dataset_returns_none_for_unknown_id(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    initialize_database(db_path)
+
+    assert get_dataset(db_path, 999) is None
