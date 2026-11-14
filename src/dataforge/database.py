@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+import json
 
 
 def connect_database(db_path):
@@ -41,5 +42,66 @@ def initialize_database(db_path):
             CREATE INDEX IF NOT EXISTS idx_records_dataset
             ON records(dataset_id);
         """)
+    finally:
+        connection.close()
+
+
+def save_dataset(db_path, source_file, records):
+    initialize_database(db_path)
+    connection = connect_database(db_path)
+
+    try:
+        cursor = connection.execute(
+            """
+            INSERT INTO datasets (source_file, record_count)
+            VALUES (?, ?)
+            """,
+            (str(source_file), len(records))
+        )
+
+        dataset_id = cursor.lastrowid
+
+        connection.executemany(
+            """
+            INSERT INTO records (
+                dataset_id,
+                row_number,
+                data_json
+            )
+            VALUES (?, ?, ?)
+            """,
+            [
+                (dataset_id, index, json.dumps(record))
+                for index, record in enumerate(records, start=1)
+            ]
+        )
+
+        connection.commit()
+        return dataset_id
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
+
+def get_dataset_records(db_path, dataset_id):
+    connection = connect_database(db_path)
+
+    try:
+        rows = connection.execute(
+            """
+            SELECT data_json
+            FROM records
+            WHERE dataset_id = ?
+            ORDER BY row_number
+            """,
+            (dataset_id,)
+        ).fetchall()
+
+        return [json.loads(row[0]) for row in rows]
+
     finally:
         connection.close()
