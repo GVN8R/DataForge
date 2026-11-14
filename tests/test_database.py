@@ -6,7 +6,8 @@ from src.dataforge.database import (
     list_datasets,
     get_dataset,
     delete_dataset,
-    get_numeric_summary
+    get_numeric_summary,
+    get_value_counts
 )
 import sqlite3
 import pytest
@@ -343,3 +344,54 @@ def test_get_numeric_summary_handles_empty_dataset(tmp_path):
         "minimum": None,
         "maximum": None
     }
+
+
+def test_get_value_counts_returns_correct_counts(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    records = [
+        {"city": "Rolla"},
+        {"city": "Columbia"},
+        {"city": "Rolla"},
+        {"city": "Salem"},
+        {"city": "Rolla"}
+    ]
+
+    dataset_id = save_dataset(db_path, "weather.csv", records)
+
+    result = get_value_counts(db_path, dataset_id, "city")
+
+    assert result == [
+        {"value": "Rolla", "count": 3},
+        {"value": "Columbia", "count": 1},
+        {"value": "Salem", "count": 1}
+    ]
+
+
+def test_get_value_counts_ignores_missing_values(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    records = [
+        {"city": "Rolla"},
+        {"city": None},
+        {},
+        {"city": "Rolla"}
+    ]
+
+    dataset_id = save_dataset(db_path, "weather.csv", records)
+
+    result = get_value_counts(db_path, dataset_id, "city")
+
+    assert result == [
+        {"value": "Rolla", "count": 2}
+    ]
+
+
+def test_get_value_counts_handles_empty_dataset(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    dataset_id = save_dataset(db_path, "empty.csv", [])
+
+    result = get_value_counts(db_path, dataset_id, "city")
+
+    assert result == []

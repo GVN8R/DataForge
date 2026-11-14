@@ -220,3 +220,38 @@ def get_numeric_summary(db_path, dataset_id, column):
 
     finally:
         connection.close()
+
+
+def get_value_counts(db_path, dataset_id, column):
+    """Count occurrences of each non-null value in a column."""
+
+    json_path = f"$.{json.dumps(column)}"
+
+    connection = connect_database(db_path)
+
+    try:
+        rows = connection.execute(
+            """
+            SELECT
+                json_extract(data_json, ?) AS value,
+                COUNT(*) AS record_count
+            FROM records
+            WHERE dataset_id = ?
+              AND json_type(data_json, ?) IS NOT NULL
+              AND json_type(data_json, ?) != 'null'
+            GROUP BY value
+            ORDER BY record_count DESC, value ASC
+            """,
+            (json_path, dataset_id, json_path, json_path)
+        ).fetchall()
+
+        return [
+            {
+                "value": row[0],
+                "count": row[1]
+            }
+            for row in rows
+        ]
+
+    finally:
+        connection.close()
