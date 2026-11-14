@@ -182,3 +182,41 @@ def delete_dataset(db_path, dataset_id):
 
     finally:
         connection.close()
+
+
+def get_numeric_summary(db_path, dataset_id, column):
+    """Calculate summary statistics for a numeric dataset column."""
+
+    connection = connect_database(db_path)
+
+    try:
+        json_path = f"$.{column}"
+
+        result = connection.execute(
+            """
+            SELECT
+                COUNT(json_extract(data_json, ?)),
+                AVG(json_extract(data_json, ?)),
+                MIN(json_extract(data_json, ?)),
+                MAX(json_extract(data_json, ?))
+            FROM records
+            WHERE dataset_id = ?
+            """,
+            (
+                json_path,
+                json_path,
+                json_path,
+                json_path,
+                dataset_id
+            )
+        ).fetchone()
+
+        return {
+            "count": result[0],
+            "average": result[1],
+            "minimum": result[2],
+            "maximum": result[3]
+        }
+
+    finally:
+        connection.close()

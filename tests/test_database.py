@@ -5,7 +5,8 @@ from src.dataforge.database import (
     get_dataset_records,
     list_datasets,
     get_dataset,
-    delete_dataset
+    delete_dataset,
+    get_numeric_summary
 )
 import sqlite3
 import pytest
@@ -279,3 +280,66 @@ def test_delete_dataset_preserves_other_datasets(tmp_path):
 
     assert get_dataset(db_path, first_id) is None
     assert get_dataset(db_path, second_id) is not None
+
+
+def test_get_numeric_summary_returns_correct_statistics(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    records = [
+        {"city": "Rolla", "temperature": 70},
+        {"city": "Columbia", "temperature": 80},
+        {"city": "Salem", "temperature": 90}
+    ]
+
+    dataset_id = save_dataset(db_path, "weather.csv", records)
+
+    summary = get_numeric_summary(
+        db_path,
+        dataset_id,
+        "temperature"
+    )
+
+    assert summary["count"] == 3
+    assert summary["average"] == 80
+    assert summary["minimum"] == 70
+    assert summary["maximum"] == 90
+
+
+def test_get_numeric_summary_ignores_missing_values(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    records = [
+        {"temperature": 70},
+        {"temperature": None},
+        {"temperature": 90}
+    ]
+
+    dataset_id = save_dataset(db_path, "weather.csv", records)
+
+    summary = get_numeric_summary(
+        db_path,
+        dataset_id,
+        "temperature"
+    )
+
+    assert summary["count"] == 2
+    assert summary["average"] == 80
+
+
+def test_get_numeric_summary_handles_empty_dataset(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    dataset_id = save_dataset(db_path, "empty.csv", [])
+
+    summary = get_numeric_summary(
+        db_path,
+        dataset_id,
+        "temperature"
+    )
+
+    assert summary == {
+        "count": 0,
+        "average": None,
+        "minimum": None,
+        "maximum": None
+    }
