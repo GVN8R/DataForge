@@ -7,7 +7,8 @@ from src.dataforge.database import (
     get_dataset,
     delete_dataset,
     get_numeric_summary,
-    get_value_counts
+    get_value_counts,
+    summarize_dataset
 )
 import sqlite3
 import pytest
@@ -395,3 +396,57 @@ def test_get_value_counts_handles_empty_dataset(tmp_path):
     result = get_value_counts(db_path, dataset_id, "city")
 
     assert result == []
+
+
+def test_summarize_dataset_returns_numeric_and_categorical_columns(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    records = [
+        {"city": "Rolla", "temperature": 70.0},
+        {"city": "Columbia", "temperature": 80.0},
+        {"city": "Rolla", "temperature": 90.0}
+    ]
+
+    dataset_id = save_dataset(db_path, "weather.csv", records)
+
+    summary = summarize_dataset(db_path, dataset_id)
+
+    assert summary["record_count"] == 3
+
+    assert summary["columns"]["temperature"]["type"] == "numeric"
+    assert summary["columns"]["temperature"]["numeric_summary"]["average"] == 80
+
+    assert summary["columns"]["city"]["type"] == "categorical"
+    assert summary["columns"]["city"]["unique_count"] == 2
+
+
+def test_summarize_dataset_handles_missing_values(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    records = [
+        {"city": "Rolla", "temperature": 70.0},
+        {"city": None, "temperature": None},
+        {"city": "Columbia", "temperature": 90.0}
+    ]
+
+    dataset_id = save_dataset(db_path, "weather.csv", records)
+
+    summary = summarize_dataset(db_path, dataset_id)
+
+    assert summary["columns"]["city"]["missing_count"] == 1
+    assert summary["columns"]["temperature"]["missing_count"] == 1
+    assert summary["columns"]["temperature"]["non_null_count"] == 2
+
+
+def test_summarize_dataset_handles_empty_dataset(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    dataset_id = save_dataset(db_path, "empty.csv", [])
+
+    summary = summarize_dataset(db_path, dataset_id)
+
+    assert summary == {
+        "dataset_id": dataset_id,
+        "record_count": 0,
+        "columns": {}
+    }

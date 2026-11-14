@@ -255,3 +255,57 @@ def get_value_counts(db_path, dataset_id, column):
 
     finally:
         connection.close()
+
+
+def summarize_dataset(db_path, dataset_id):
+    """Generate a summary of every column in a dataset."""
+
+    records = get_dataset_records(db_path, dataset_id)
+
+    if not records:
+        return {
+            "dataset_id": dataset_id,
+            "record_count": 0,
+            "columns": {}
+        }
+
+    columns = {}
+
+    for column in records[0].keys():
+        values = [
+            record.get(column)
+            for record in records
+            if record.get(column) is not None
+        ]
+
+        column_summary = {
+            "non_null_count": len(values),
+            "missing_count": len(records) - len(values),
+            "unique_count": len(set(str(value) for value in values))
+        }
+
+        if values and all(
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+            for value in values
+        ):
+            column_summary["type"] = "numeric"
+            column_summary["numeric_summary"] = get_numeric_summary(
+                db_path,
+                dataset_id,
+                column
+            )
+        else:
+            column_summary["type"] = "categorical"
+            column_summary["value_counts"] = get_value_counts(
+                db_path,
+                dataset_id,
+                column
+            )
+
+        columns[column] = column_summary
+
+    return {
+        "dataset_id": dataset_id,
+        "record_count": len(records),
+        "columns": columns
+    }
