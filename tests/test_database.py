@@ -4,7 +4,8 @@ from src.dataforge.database import (
     save_dataset,
     get_dataset_records,
     list_datasets,
-    get_dataset
+    get_dataset,
+    delete_dataset
 )
 import sqlite3
 import pytest
@@ -215,3 +216,66 @@ def test_get_dataset_returns_none_for_unknown_id(tmp_path):
     initialize_database(db_path)
 
     assert get_dataset(db_path, 999) is None
+
+
+def test_delete_dataset_removes_dataset(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    dataset_id = save_dataset(
+        db_path,
+        "weather.csv",
+        [{"city": "Rolla"}]
+    )
+
+    result = delete_dataset(db_path, dataset_id)
+
+    assert result is True
+    assert get_dataset(db_path, dataset_id) is None
+
+
+def test_delete_dataset_removes_associated_records(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    dataset_id = save_dataset(
+        db_path,
+        "weather.csv",
+        [
+            {"city": "Rolla"},
+            {"city": "Columbia"}
+        ]
+    )
+
+    delete_dataset(db_path, dataset_id)
+
+    assert get_dataset_records(db_path, dataset_id) == []
+
+
+def test_delete_dataset_returns_false_for_unknown_id(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    initialize_database(db_path)
+
+    result = delete_dataset(db_path, 999)
+
+    assert result is False
+
+
+def test_delete_dataset_preserves_other_datasets(tmp_path):
+    db_path = tmp_path / "dataforge.db"
+
+    first_id = save_dataset(
+        db_path,
+        "weather.csv",
+        [{"city": "Rolla"}]
+    )
+
+    second_id = save_dataset(
+        db_path,
+        "population.csv",
+        [{"city": "Columbia"}]
+    )
+
+    delete_dataset(db_path, first_id)
+
+    assert get_dataset(db_path, first_id) is None
+    assert get_dataset(db_path, second_id) is not None

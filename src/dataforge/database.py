@@ -158,3 +158,27 @@ def get_dataset(db_path, dataset_id):
 
     finally:
         connection.close()
+
+
+def delete_dataset(db_path, dataset_id):
+    connection = connect_database(db_path)
+
+    try:
+        cursor = connection.execute(
+            """
+            DELETE FROM datasets
+            WHERE id = ?
+            """,
+            (dataset_id,)
+        )
+
+        connection.commit()
+
+        return cursor.rowcount > 0
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
