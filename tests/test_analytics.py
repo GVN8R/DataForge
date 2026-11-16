@@ -204,7 +204,7 @@ def test_outliers_detects_high_values():
 
     result = detect_outliers(records, "value")
 
-    assert result == [100]
+    assert result == [{"value": 100}]
 
 
 def test_outliers_detects_low_values():
@@ -217,7 +217,7 @@ def test_outliers_detects_low_values():
 
     result = detect_outliers(records, "value")
 
-    assert result == [-50]
+    assert result == [{"value": -50}]
 
 
 def test_outliers_no_false_positives():

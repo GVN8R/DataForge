@@ -126,7 +126,7 @@ def detect_outliers(records, numeric_column):
     upper_bound = q3 + 1.5 * iqr
 
     return [
-        record[numeric_column]
+        record
         for record in records
         if isinstance(record.get(numeric_column), (int, float))
         and not isinstance(record.get(numeric_column), bool)
