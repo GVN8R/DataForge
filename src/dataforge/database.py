@@ -47,6 +47,31 @@ def initialize_database(db_path):
 
 
 def save_dataset(db_path, source_file, records):
+    if not isinstance(source_file, (str, Path)):
+        raise TypeError("source_file must be a string or Path.")
+
+    if not str(source_file).strip():
+        raise ValueError("source_file cannot be empty.")
+
+    if not isinstance(records, list):
+        raise TypeError("records must be a list.")
+
+    for index, record in enumerate(records, start=1):
+        if not isinstance(record, dict):
+            raise TypeError(
+                f"Record at row {index} must be a dictionary."
+            )
+
+    try:
+        serialized_records = [
+            json.dumps(record, allow_nan=False)
+            for record in records
+        ]
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "Records contain values that cannot be serialized to JSON."
+        ) from error
+
     initialize_database(db_path)
     connection = connect_database(db_path)
 
@@ -71,8 +96,9 @@ def save_dataset(db_path, source_file, records):
             VALUES (?, ?, ?)
             """,
             [
-                (dataset_id, index, json.dumps(record))
-                for index, record in enumerate(records, start=1)
+                (dataset_id, index, serialized_record)
+                for index, serialized_record
+                in enumerate(serialized_records, start=1)
             ]
         )
 
@@ -88,6 +114,12 @@ def save_dataset(db_path, source_file, records):
 
 
 def get_dataset_records(db_path, dataset_id):
+    if isinstance(dataset_id, bool) or not isinstance(dataset_id, int):
+        raise TypeError("dataset_id must be an integer.")
+
+    if dataset_id <= 0:
+        raise ValueError("dataset_id must be positive.")
+
     connection = connect_database(db_path)
 
     try:
@@ -101,7 +133,26 @@ def get_dataset_records(db_path, dataset_id):
             (dataset_id,)
         ).fetchall()
 
-        return [json.loads(row[0]) for row in rows]
+        records = []
+
+        for row_number, row in enumerate(rows, start=1):
+            try:
+                record = json.loads(row[0])
+            except (json.JSONDecodeError, TypeError) as error:
+                raise ValueError(
+                    f"Corrupted JSON in dataset {dataset_id}, "
+                    f"record {row_number}."
+                ) from error
+
+            if not isinstance(record, dict):
+                raise ValueError(
+                    f"Invalid record format in dataset {dataset_id}, "
+                    f"record {row_number}."
+                )
+
+            records.append(record)
+
+        return records
 
     finally:
         connection.close()

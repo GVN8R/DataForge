@@ -450,3 +450,164 @@ def test_summarize_dataset_handles_empty_dataset(tmp_path):
         "record_count": 0,
         "columns": {}
     }
+
+
+def test_save_dataset_rejects_empty_source_file(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    with pytest.raises(ValueError, match="cannot be empty"):
+        save_dataset(db_path, "   ", [{"name": "Alice"}])
+
+
+def test_save_dataset_rejects_non_list_records(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    with pytest.raises(TypeError, match="must be a list"):
+        save_dataset(db_path, "data.csv", {"name": "Alice"})
+
+
+def test_save_dataset_rejects_non_dictionary_record(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    with pytest.raises(TypeError, match="dictionary"):
+        save_dataset(db_path, "data.csv", ["Alice"])
+
+
+def test_save_dataset_rejects_non_serializable_values(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    records = [{"value": object()}]
+
+    with pytest.raises(ValueError, match="JSON"):
+        save_dataset(db_path, "data.csv", records)
+
+
+def test_save_dataset_rejects_non_finite_numbers(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    records = [{"value": float("nan")}]
+
+    with pytest.raises(ValueError, match="JSON"):
+        save_dataset(db_path, "data.csv", records)
+
+
+def test_save_dataset_rolls_back_failed_record_insertion(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    initialize_database(db_path)
+
+    connection = sqlite3.connect(db_path)
+
+    try:
+        connection.execute("""
+            CREATE TRIGGER reject_record_insert
+            BEFORE INSERT ON records
+            BEGIN
+                SELECT RAISE(ABORT, 'Simulated insertion failure');
+            END;
+        """)
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(
+        sqlite3.IntegrityError,
+        match="Simulated insertion failure"
+    ):
+        save_dataset(
+            db_path,
+            "data.csv",
+            [{"name": "Alice"}]
+        )
+
+    connection = sqlite3.connect(db_path)
+
+    try:
+        dataset_count = connection.execute(
+            "SELECT COUNT(*) FROM datasets"
+        ).fetchone()[0]
+
+        record_count = connection.execute(
+            "SELECT COUNT(*) FROM records"
+        ).fetchone()[0]
+    finally:
+        connection.close()
+
+    assert dataset_count == 0
+    assert record_count == 0
+
+
+def test_get_dataset_records_rejects_non_integer_id(tmp_path):
+    with pytest.raises(TypeError, match="integer"):
+        get_dataset_records(tmp_path / "test.db", "1")
+
+
+def test_get_dataset_records_rejects_boolean_id(tmp_path):
+    with pytest.raises(TypeError, match="integer"):
+        get_dataset_records(tmp_path / "test.db", True)
+
+
+def test_get_dataset_records_rejects_non_positive_id(tmp_path):
+    with pytest.raises(ValueError, match="positive"):
+        get_dataset_records(tmp_path / "test.db", 0)
+
+
+def test_get_dataset_records_returns_empty_for_unknown_id(tmp_path):
+    db_path = tmp_path / "test.db"
+    initialize_database(db_path)
+
+    assert get_dataset_records(db_path, 999) == []
+
+
+def test_get_dataset_records_rejects_corrupted_json(tmp_path):
+    db_path = tmp_path / "test.db"
+    dataset_id = save_dataset(
+        db_path,
+        "data.csv",
+        [{"name": "Alice"}]
+    )
+
+    connection = sqlite3.connect(db_path)
+
+    try:
+        connection.execute(
+            """
+            UPDATE records
+            SET data_json = ?
+            WHERE dataset_id = ?
+            """,
+            ("{invalid json", dataset_id)
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(ValueError, match="Corrupted JSON"):
+        get_dataset_records(db_path, dataset_id)
+
+
+def test_get_dataset_records_rejects_non_dictionary_json(tmp_path):
+    db_path = tmp_path / "test.db"
+    dataset_id = save_dataset(
+        db_path,
+        "data.csv",
+        [{"name": "Alice"}]
+    )
+
+    connection = sqlite3.connect(db_path)
+
+    try:
+        connection.execute(
+            """
+            UPDATE records
+            SET data_json = ?
+            WHERE dataset_id = ?
+            """,
+            ('["Alice"]', dataset_id)
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(ValueError, match="Invalid record format"):
+        get_dataset_records(db_path, dataset_id)

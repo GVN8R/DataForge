@@ -1,5 +1,6 @@
 from src.dataforge.validation import generate_full_quality_report
 from datetime import datetime
+import math
 
 def normalize_column_names(records):
     if not records:
@@ -74,57 +75,82 @@ def normalize_missing_values(records, missing_markers=None):
 
 
 def convert_numeric_columns(records, columns):
+    """Convert selected columns to finite floating-point numbers."""
     converted_records = []
 
-    for record in records:
+    for row_number, record in enumerate(records, start=1):
         converted_record = record.copy()
 
         for column in columns:
-            value = converted_record.get(column)
+            if column not in converted_record:
+                raise ValueError(
+                    f"Missing column '{column}' in row {row_number}."
+                )
+
+            value = converted_record[column]
 
             if value is None:
                 continue
 
             try:
-                converted_record[column] = float(value)
-            except (ValueError, TypeError):
+                numeric_value = float(value)
+            except (ValueError, TypeError) as error:
                 raise ValueError(
-                    f"Invalid numeric value in column "
-                    f"'{column}': {value}"
+                    f"Invalid numeric value in column '{column}', "
+                    f"row {row_number}: {value}"
+                ) from error
+
+            if not math.isfinite(numeric_value):
+                raise ValueError(
+                    f"Non-finite numeric value in column '{column}', "
+                    f"row {row_number}: {value}"
                 )
+
+            converted_record[column] = numeric_value
 
         converted_records.append(converted_record)
 
     return converted_records
 
 
+
 def normalize_date_columns(records, columns, date_format=None):
+    """Normalize selected date columns to YYYY-MM-DD strings."""
     normalized_records = []
 
-    for record in records:
+    for row_number, record in enumerate(records, start=1):
         normalized_record = record.copy()
 
         for column in columns:
-            value = normalized_record.get(column)
+            if column not in normalized_record:
+                raise ValueError(
+                    f"Missing column '{column}' in row {row_number}."
+                )
+
+            value = normalized_record[column]
 
             if value is None:
                 continue
 
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"Invalid date type in column '{column}', "
+                    f"row {row_number}: {value}"
+                )
+
             try:
-                if date_format:
-                    parsed_date = datetime.strptime(
-                        value,
-                        date_format
-                    )
+                if date_format is not None:
+                    parsed_date = datetime.strptime(value, date_format)
                 else:
                     parsed_date = datetime.fromisoformat(value)
 
                 normalized_record[column] = parsed_date.date().isoformat()
 
-            except(ValueError, TypeError):
+            except (ValueError, TypeError) as error:
                 raise ValueError(
-                    f"Invalid date in column '{column}': {value}"
-                )
+                    f"Invalid date in column '{column}', "
+                    f"row {row_number}: {value}"
+                ) from error
 
         normalized_records.append(normalized_record)
 
@@ -132,6 +158,26 @@ def normalize_date_columns(records, columns, date_format=None):
 
 
 def transform_records(records, rules):
+    if not isinstance(rules, dict):
+        raise TypeError("Transformation rules must be a dictionary.")
+
+    numeric_columns = rules.get("numeric_columns", [])
+    date_columns = rules.get("date_columns", [])
+
+    if not isinstance(numeric_columns, (list, tuple)):
+        raise TypeError("numeric_columns must be a list or tuple.")
+
+    if not isinstance(date_columns, (list, tuple)):
+        raise TypeError("date_columns must be a list or tuple.")
+
+    if not all(isinstance(column, str) and column.strip()
+               for column in numeric_columns):
+        raise ValueError("numeric_columns must contain valid column names.")
+
+    if not all(isinstance(column, str) and column.strip()
+               for column in date_columns):
+        raise ValueError("date_columns must contain valid column names.")
+
     transformed = normalize_column_names(records)
 
     transformed = normalize_text_values(transformed)
@@ -143,17 +189,16 @@ def transform_records(records, rules):
 
     transformed = convert_numeric_columns(
         transformed,
-        rules.get("numeric_columns", [])
+        numeric_columns
     )
 
     transformed = normalize_date_columns(
         transformed,
-        rules.get("date_columns", []),
+        date_columns,
         rules.get("date_format")
     )
 
     return transformed
-
 
 def process_records(records, validation_rules, transformation_rules):
     validation_report = generate_full_quality_report(

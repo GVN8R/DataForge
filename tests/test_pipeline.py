@@ -1,4 +1,5 @@
 from src.dataforge.pipeline import run_pipeline
+import pytest
 import csv
 
 
@@ -74,3 +75,33 @@ def test_run_pipeline_rejects_missing_required_columns(tmp_path):
         assert "required columns are missing" in str(error)
 
     assert not output_path.exists()
+
+
+def test_run_pipeline_rejects_invalid_validation_rules(tmp_path):
+    with pytest.raises(TypeError, match="validation_rules"):
+        run_pipeline(
+            "input.csv",
+            tmp_path / "output.csv",
+            [],
+            {}
+        )
+
+
+def test_run_pipeline_rejects_invalid_transformation_rules(tmp_path):
+    with pytest.raises(TypeError, match="transformation_rules"):
+        run_pipeline(
+            "input.csv",
+            tmp_path / "output.csv",
+            {},
+            []
+        )
+
+
+def test_run_pipeline_rejects_empty_input_path(tmp_path):
+    with pytest.raises(ValueError, match="input_path"):
+        run_pipeline("", tmp_path / "output.csv", {}, {})
+
+
+def test_run_pipeline_rejects_empty_output_path(tmp_path):
+    with pytest.raises(ValueError, match="output_path"):
+        run_pipeline("input.csv", "", {}, {})

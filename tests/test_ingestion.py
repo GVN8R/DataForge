@@ -58,5 +58,45 @@ def test_extra_values_in_row(tmp_path):
     file = tmp_path / "extra.csv"
     file.write_text("name,age\nAlice,20,extra\n", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="more values"):
+    with pytest.raises(ValueError, match="number of values"):
         read_csv(file)
+
+
+
+def test_rejects_invalid_utf8_encoding(tmp_path):
+    file_path = tmp_path / "invalid.csv"
+    file_path.write_bytes(b"name,age\nAlice,\xff")
+
+    with pytest.raises(ValueError, match="invalid UTF-8"):
+        read_csv(file_path)
+
+
+def test_rejects_rows_with_too_few_values(tmp_path):
+    file_path = tmp_path / "short.csv"
+    file_path.write_text(
+        "name,age,city\nAlice,20\n",
+        encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="inconsistent"):
+        read_csv(file_path)
+
+
+def test_rejects_whitespace_only_file(tmp_path):
+    file_path = tmp_path / "whitespace.csv"
+    file_path.write_text("   \n   \n", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        read_csv(file_path)
+
+
+def test_strips_column_names(tmp_path):
+    file_path = tmp_path / "headers.csv"
+    file_path.write_text(
+        " name , age \nAlice,20\n",
+        encoding="utf-8"
+    )
+
+    result = read_csv(file_path)
+
+    assert result == [{"name": "Alice", "age": "20"}]

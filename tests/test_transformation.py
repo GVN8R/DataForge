@@ -353,3 +353,134 @@ def test_process_records_does_not_modify_original_records():
     )
 
     assert records == original
+
+
+def test_rejects_nan():
+    records = [{"temperature": "NaN"}]
+
+    with pytest.raises(ValueError, match="Non-finite"):
+        convert_numeric_columns(records, ["temperature"])
+
+
+def test_rejects_infinity():
+    records = [{"temperature": "inf"}]
+
+    with pytest.raises(ValueError, match="Non-finite"):
+        convert_numeric_columns(records, ["temperature"])
+
+
+def test_rejects_missing_column():
+    records = [{"city": "Rolla"}]
+
+    with pytest.raises(ValueError, match="Missing column"):
+        convert_numeric_columns(records, ["temperature"])
+
+
+def test_error_includes_row_number():
+    records = [
+        {"temperature": "20"},
+        {"temperature": "invalid"},
+    ]
+
+    with pytest.raises(ValueError, match="row 2"):
+        convert_numeric_columns(records, ["temperature"])
+
+
+def test_original_records_remain_unchanged_after_error():
+    records = [
+        {"temperature": "20"},
+        {"temperature": "invalid"},
+    ]
+
+    with pytest.raises(ValueError):
+        convert_numeric_columns(records, ["temperature"])
+
+    assert records == [
+        {"temperature": "20"},
+        {"temperature": "invalid"},
+    ]
+
+
+
+def test_normalize_dates_rejects_missing_column():
+    records = [{"name": "Assignment"}]
+
+    with pytest.raises(ValueError, match="Missing column"):
+        normalize_date_columns(records, ["date"])
+
+
+def test_normalize_dates_includes_row_number():
+    records = [
+        {"date": "2026-01-15"},
+        {"date": "not-a-date"}
+    ]
+
+    with pytest.raises(ValueError, match="row 2"):
+        normalize_date_columns(records, ["date"])
+
+
+def test_normalize_dates_rejects_non_string_values():
+    records = [{"date": 20260115}]
+
+    with pytest.raises(ValueError, match="Invalid date type"):
+        normalize_date_columns(records, ["date"])
+
+
+def test_normalize_dates_preserves_original_records():
+    records = [{"date": "2026-01-15"}]
+
+    normalize_date_columns(records, ["date"])
+
+    assert records == [{"date": "2026-01-15"}]
+
+
+def test_normalize_dates_preserves_none_values():
+    records = [{"date": None}]
+
+    result = normalize_date_columns(records, ["date"])
+
+    assert result == [{"date": None}]
+
+
+def test_transform_records_rejects_non_dictionary_rules():
+    records = [{"name": "Alice"}]
+
+    with pytest.raises(TypeError, match="dictionary"):
+        transform_records(records, [])
+
+
+def test_transform_records_rejects_invalid_numeric_columns():
+    records = [{"temperature": "25"}]
+    rules = {"numeric_columns": "temperature"}
+
+    with pytest.raises(TypeError, match="numeric_columns"):
+        transform_records(records, rules)
+
+
+def test_transform_records_rejects_invalid_date_columns():
+    records = [{"date": "2026-01-01"}]
+    rules = {"date_columns": "date"}
+
+    with pytest.raises(TypeError, match="date_columns"):
+        transform_records(records, rules)
+
+
+def test_transform_records_rejects_empty_column_names():
+    records = [{"temperature": "25"}]
+    rules = {"numeric_columns": [" "]}
+
+    with pytest.raises(ValueError, match="valid column names"):
+        transform_records(records, rules)
+
+
+def test_transform_records_does_not_modify_original_records():
+    records = [{" Name ": " Alice ", "Temperature": "25"}]
+    original = [record.copy() for record in records]
+
+    result = transform_records(
+        records,
+        {"numeric_columns": ["temperature"]}
+    )
+
+    assert records == original
+    assert result == [{"name": "Alice", "temperature": 25.0}]
